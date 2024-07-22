@@ -8,10 +8,10 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.viewbinding.ViewBinding;
 
-import com.fongmi.android.tv.cast.ScanEvent;
+import com.fongmi.android.tv.event.ScanEvent;
 import com.fongmi.android.tv.databinding.ActivityScanBinding;
 import com.fongmi.android.tv.ui.base.BaseActivity;
-import com.fongmi.android.tv.utils.Utils;
+import com.fongmi.android.tv.utils.Util;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.ResultPoint;
 import com.journeyapps.barcodescanner.BarcodeCallback;
@@ -19,6 +19,7 @@ import com.journeyapps.barcodescanner.BarcodeResult;
 import com.journeyapps.barcodescanner.CaptureManager;
 import com.journeyapps.barcodescanner.DefaultDecoderFactory;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class ScanActivity extends BaseActivity implements BarcodeCallback {
@@ -38,13 +39,13 @@ public class ScanActivity extends BaseActivity implements BarcodeCallback {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Utils.hideSystemUI(this);
+        Util.hideSystemUI(this);
     }
 
     @Override
     protected void initView(Bundle savedInstanceState) {
         mCapture = new CaptureManager(this, mBinding.scanner);
-        mBinding.scanner.getBarcodeView().setDecoderFactory(new DefaultDecoderFactory(List.of(BarcodeFormat.QR_CODE)));
+        mBinding.scanner.getBarcodeView().setDecoderFactory(new DefaultDecoderFactory(Arrays.asList(BarcodeFormat.QR_CODE)));
     }
 
     @Override
@@ -67,13 +68,13 @@ public class ScanActivity extends BaseActivity implements BarcodeCallback {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        Utils.hideSystemUI(this);
+        Util.hideSystemUI(this);
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) Utils.hideSystemUI(this);
+        if (hasFocus) Util.hideSystemUI(this);
     }
 
     @Override

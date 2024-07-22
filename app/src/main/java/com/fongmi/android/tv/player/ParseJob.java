@@ -1,17 +1,20 @@
 package com.fongmi.android.tv.player;
 
+import android.text.TextUtils;
+
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
-import com.fongmi.android.tv.api.ApiConfig;
+import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Parse;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.impl.ParseCallback;
 import com.fongmi.android.tv.ui.custom.CustomWebView;
-import com.fongmi.android.tv.utils.Utils;
+import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Json;
+import com.google.common.net.HttpHeaders;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -51,10 +54,18 @@ public class ParseJob implements ParseCallback {
     }
 
     private void setParse(Result result, boolean useParse) {
-        if (useParse) parse = ApiConfig.get().getParse();
+        if (useParse) parse = VodConfig.get().getParse();
         if (result.getPlayUrl().startsWith("json:")) parse = Parse.get(1, result.getPlayUrl().substring(5));
-        if (result.getPlayUrl().startsWith("parse:")) parse = ApiConfig.get().getParse(result.getPlayUrl().substring(6));
-        if (parse == null) parse = Parse.get(0, result.getPlayUrl(), result.getHeader());
+        if (result.getPlayUrl().startsWith("parse:")) parse = VodConfig.get().getParse(result.getPlayUrl().substring(6));
+        if (parse == null || parse.isEmpty()) parse = Parse.get(0, result.getPlayUrl());
+        parse.setHeader(result.getHeader());
+        parse.setClick(getClick(result));
+    }
+
+    private String getClick(Result result) {
+        String click = VodConfig.get().getSite(result.getKey()).getClick();
+        if (!TextUtils.isEmpty(click)) return click;
+        return result.getClick();
     }
 
     private void execute(Result result) {
@@ -91,7 +102,7 @@ public class ParseJob implements ParseCallback {
             case 3: //Json聚合
                 jsonMix(webUrl, flag);
                 break;
-            case 4: //上帝模式
+            case 4: //超級解析
                 godParse(webUrl, flag);
                 break;
         }
@@ -99,28 +110,28 @@ public class ParseJob implements ParseCallback {
 
     private void jsonParse(Parse item, String webUrl, boolean error) throws Exception {
         String body = OkHttp.newCall(item.getUrl() + webUrl, Headers.of(item.getHeaders())).execute().body().string();
-        JsonObject object = JsonParser.parseString(body).getAsJsonObject();
-        object = object.has("data") ? object.getAsJsonObject("data") : object;
-        boolean illegal = body.contains("不存在") || body.contains("已过期");
-        String url = illegal ? "" : Json.safeString(object, "url");
+        JsonObject object = Json.parse(body).getAsJsonObject();
+        String url = Json.safeString(object, "url");
+        JsonObject data = object.getAsJsonObject("data");
+        if (url.isEmpty()) url = Json.safeString(data, "url");
         checkResult(getHeader(object), url, item.getName(), error);
     }
 
     private void jsonExtend(String webUrl) throws Throwable {
         LinkedHashMap<String, String> jxs = new LinkedHashMap<>();
-        for (Parse item : ApiConfig.get().getParses()) if (item.getType() == 1) jxs.put(item.getName(), item.extUrl());
-        checkResult(Result.fromObject(ApiConfig.get().jsonExt(parse.getUrl(), jxs, webUrl)));
+        for (Parse item : VodConfig.get().getParses()) if (item.getType() == 1) jxs.put(item.getName(), item.extUrl());
+        checkResult(Result.fromObject(VodConfig.get().jsonExt(parse.getUrl(), jxs, webUrl)));
     }
 
     private void jsonMix(String webUrl, String flag) throws Throwable {
         LinkedHashMap<String, HashMap<String, String>> jxs = new LinkedHashMap<>();
-        for (Parse item : ApiConfig.get().getParses()) jxs.put(item.getName(), item.mixMap());
-        checkResult(Result.fromObject(ApiConfig.get().jsonExtMix(flag, parse.getUrl(), parse.getName(), jxs, webUrl)));
+        for (Parse item : VodConfig.get().getParses()) jxs.put(item.getName(), item.mixMap());
+        checkResult(Result.fromObject(VodConfig.get().jsonExtMix(flag, parse.getUrl(), parse.getName(), jxs, webUrl)));
     }
 
     private void godParse(String webUrl, String flag) throws Exception {
-        List<Parse> json = ApiConfig.get().getParses(1, flag);
-        List<Parse> webs = ApiConfig.get().getParses(0, flag);
+        List<Parse> json = VodConfig.get().getParses(1, flag);
+        List<Parse> webs = VodConfig.get().getParses(0, flag);
         CountDownLatch latch = new CountDownLatch(json.size());
         for (Parse item : json) infinite.execute(() -> jsonParse(latch, item, webUrl));
         latch.await();
@@ -147,8 +158,9 @@ public class ParseJob implements ParseCallback {
     }
 
     private void checkResult(Result result) {
+        result.setHeader(parse.getExt().getHeader());
         if (result.getUrl().isEmpty()) onParseError();
-        else if (result.getParse() == 1) startWeb(result.getHeaders(), Utils.convert(result.getUrl().v()));
+        else if (result.getParse() == 1) startWeb(result.getHeaders(), UrlUtil.convert(result.getUrl().v()));
         else onParseSuccess(result.getHeaders(), result.getUrl().v(), result.getJxFrom());
     }
 
@@ -166,20 +178,21 @@ public class ParseJob implements ParseCallback {
     }
 
     private void startWeb(String key, Parse item, String webUrl) {
-        startWeb(key, item.getName(), item.getHeaders(), item.getUrl() + webUrl);
+        startWeb(key, item.getName(), item.getHeaders(), item.getUrl() + webUrl, item.getClick());
     }
 
     private void startWeb(Map<String, String> headers, String url) {
-        startWeb("", "", headers, url);
+        startWeb("", "", headers, url, "");
     }
 
-    private void startWeb(String key, String form, Map<String, String> headers, String url) {
-        App.post(() -> webViews.add(CustomWebView.create(App.get()).start(key, form, headers, url, this)));
+    private void startWeb(String key, String from, Map<String, String> headers, String url, String click) {
+        App.post(() -> webViews.add(CustomWebView.create(App.get()).start(key, from, headers, url, click, this, !url.contains("player/?url="))));
     }
 
     private Map<String, String> getHeader(JsonObject object) {
         Map<String, String> headers = new HashMap<>();
-        for (String key : object.keySet()) if (key.equalsIgnoreCase("user-agent") || key.equalsIgnoreCase("referer")) headers.put(key, object.get(key).getAsString());
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) if (entry.getKey().equalsIgnoreCase(HttpHeaders.USER_AGENT) || entry.getKey().equalsIgnoreCase(HttpHeaders.REFERER)) headers.put(UrlUtil.fixHeader(entry.getKey()), object.get(entry.getKey()).getAsString());
+        if (headers.isEmpty()) return parse.getHeaders();
         return headers;
     }
 

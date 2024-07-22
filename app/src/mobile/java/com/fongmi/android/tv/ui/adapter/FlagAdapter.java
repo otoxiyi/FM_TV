@@ -26,7 +26,7 @@ public class FlagAdapter extends RecyclerView.Adapter<FlagAdapter.ViewHolder> {
 
     public interface OnClickListener {
 
-        void onItemClick(Flag item, boolean force);
+        void onItemClick(Flag item);
     }
 
     public void addAll(List<Flag> items) {
@@ -49,6 +49,7 @@ public class FlagAdapter extends RecyclerView.Adapter<FlagAdapter.ViewHolder> {
     }
 
     public void setActivated(Flag flag) {
+        if (!mItems.contains(flag)) flag.setFlag(mItems.get(0).getFlag());
         for (Flag item : mItems) item.setActivated(flag);
         notifyItemRangeChanged(0, getItemCount());
     }
@@ -59,6 +60,10 @@ public class FlagAdapter extends RecyclerView.Adapter<FlagAdapter.ViewHolder> {
 
     public void reverse() {
         for (Flag item : mItems) Collections.reverse(item.getEpisodes());
+    }
+
+    public boolean isEmpty() {
+        return getItemCount() == 0;
     }
 
     @Override
@@ -77,7 +82,7 @@ public class FlagAdapter extends RecyclerView.Adapter<FlagAdapter.ViewHolder> {
         Flag item = mItems.get(position);
         holder.binding.text.setText(item.getShow());
         holder.binding.text.setActivated(item.isActivated());
-        holder.binding.text.setOnClickListener(v -> mListener.onItemClick(item, false));
+        holder.binding.text.setOnClickListener(v -> mListener.onItemClick(item));
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

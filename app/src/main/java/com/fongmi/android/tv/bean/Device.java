@@ -7,13 +7,16 @@ import androidx.room.Entity;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
+import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.server.Server;
-import com.github.catvod.utils.Util;
-import com.google.gson.Gson;
+import com.fongmi.android.tv.utils.UrlUtil;
+import com.fongmi.android.tv.utils.Util;
 import com.google.gson.annotations.SerializedName;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 @Entity(indices = @Index(value = {"uuid", "name"}, unique = true))
@@ -33,15 +36,23 @@ public class Device {
 
     public static Device get() {
         Device device = new Device();
-        device.setUuid(Util.getDeviceId());
+        device.setUuid(Util.getAndroidId());
         device.setName(Util.getDeviceName());
         device.setIp(Server.get().getAddress());
         device.setType(Product.getDeviceType());
         return device;
     }
 
+    public static Device get(org.fourthline.cling.model.meta.Device<?, ?, ?> item) {
+        Device device = new Device();
+        device.setUuid(item.getIdentity().getUdn().getIdentifierString());
+        device.setName(item.getDetails().getFriendlyName());
+        device.setType(2);
+        return device;
+    }
+
     public static Device objectFrom(String str) {
-        return new Gson().fromJson(str, Device.class);
+        return App.gson().fromJson(str, Device.class);
     }
 
     public Integer getId() {
@@ -101,7 +112,7 @@ public class Device {
     }
 
     public String getHost() {
-        return isDLNA() ? getUuid() : Util.host(getIp());
+        return isDLNA() ? getUuid() : UrlUtil.host(getIp());
     }
 
     public Device save() {
@@ -128,6 +139,19 @@ public class Device {
     @NonNull
     @Override
     public String toString() {
-        return new Gson().toJson(this);
+        return App.gson().toJson(this);
+    }
+
+    public static class Sorter implements Comparator<Device> {
+
+        public static void sort(List<Device> items) {
+            if (items.size() > 1) Collections.sort(items, new Sorter());
+        }
+
+        @Override
+        public int compare(Device o1, Device o2) {
+            int comp = Integer.compare(o1.getType(), o2.getType());
+            return comp != 0 ? comp : o1.getName().compareTo(o2.getName());
+        }
     }
 }

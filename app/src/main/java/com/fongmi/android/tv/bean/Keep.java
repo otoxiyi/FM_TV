@@ -5,10 +5,9 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.api.ApiConfig;
+import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.RefreshEvent;
-import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 
@@ -38,7 +37,7 @@ public class Keep {
 
     public static List<Keep> arrayFrom(String str) {
         Type listType = new TypeToken<List<Keep>>() {}.getType();
-        List<Keep> items = new Gson().fromJson(str, listType);
+        List<Keep> items = App.gson().fromJson(str, listType);
         return items == null ? Collections.emptyList() : items;
     }
 
@@ -108,7 +107,7 @@ public class Keep {
     }
 
     public static Keep find(String key) {
-        return find(ApiConfig.getCid(), key);
+        return find(VodConfig.getCid(), key);
     }
 
     public static Keep find(int cid, String key) {
@@ -157,7 +156,7 @@ public class Keep {
         for (Keep target : targets) {
             for (Config config : configs) {
                 if (target.getCid() == config.getId()) {
-                    target.save(Config.find(config, 0).getId());
+                    target.save(Config.find(config).getId());
                 }
             }
         }

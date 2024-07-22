@@ -2,13 +2,27 @@ package com.fongmi.android.tv.bean;
 
 import android.text.TextUtils;
 
+import com.fongmi.android.tv.App;
+import com.google.gson.JsonElement;
+import com.google.gson.annotations.SerializedName;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class Url {
 
+    @SerializedName("values")
     private List<Value> values;
+    @SerializedName("position")
     private int position;
+
+    public static Url objectFrom(JsonElement element) {
+        try {
+            return App.gson().fromJson(element, Url.class);
+        } catch (Exception e) {
+            return create();
+        }
+    }
 
     public static Url create() {
         return new Url();
@@ -58,7 +72,7 @@ public class Url {
         return getValues().isEmpty() || TextUtils.isEmpty(v());
     }
 
-    public boolean isOnly() {
-        return getValues().size() <= 1;
+    public boolean isMulti() {
+        return getValues().size() > 1;
     }
 }

@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Parcelable;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -21,7 +22,7 @@ import androidx.viewpager.widget.ViewPager;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.api.ApiConfig;
+import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Collect;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.databinding.ActivityCollectBinding;
@@ -42,7 +43,6 @@ public class CollectActivity extends BaseActivity {
     private ActivityCollectBinding mBinding;
     private ArrayObjectAdapter mAdapter;
     private SiteViewModel mViewModel;
-    private PageAdapter mPageAdapter;
     private PauseExecutor mExecutor;
     private List<Site> mSites;
     private View mOldView;
@@ -56,6 +56,10 @@ public class CollectActivity extends BaseActivity {
         if (clear) intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra("keyword", keyword);
         activity.startActivityForResult(intent, 1000);
+    }
+
+    private CollectFragment getFragment() {
+        return (CollectFragment) mBinding.pager.getAdapter().instantiateItem(mBinding.pager, 0);
     }
 
     private String getKeyword() {
@@ -101,20 +105,20 @@ public class CollectActivity extends BaseActivity {
     private void setViewModel() {
         mViewModel = new ViewModelProvider(this).get(SiteViewModel.class);
         mViewModel.search.observe(this, result -> {
-            mAdapter.add(Collect.create(result.getList()));
             getFragment().addVideo(result.getList());
-            mPageAdapter.notifyDataSetChanged();
+            mAdapter.add(Collect.create(result.getList()));
+            mBinding.pager.getAdapter().notifyDataSetChanged();
         });
     }
 
     private void setPager() {
-        mBinding.pager.setAdapter(mPageAdapter = new PageAdapter(getSupportFragmentManager()));
+        mBinding.pager.setAdapter(new PageAdapter(getSupportFragmentManager()));
     }
 
     private void setSite() {
         mSites = new ArrayList<>();
-        for (Site site : ApiConfig.get().getSites()) if (site.isSearchable()) mSites.add(site);
-        Site home = ApiConfig.get().getHome();
+        for (Site site : VodConfig.get().getSites()) if (site.isSearchable()) mSites.add(site);
+        Site home = VodConfig.get().getHome();
         if (!mSites.contains(home)) return;
         mSites.remove(home);
         mSites.add(0, home);
@@ -122,7 +126,7 @@ public class CollectActivity extends BaseActivity {
 
     private void search() {
         mAdapter.add(Collect.all());
-        mPageAdapter.notifyDataSetChanged();
+        mBinding.pager.getAdapter().notifyDataSetChanged();
         mExecutor = new PauseExecutor(Constant.THREAD_POOL, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         mBinding.result.setText(getString(R.string.collect_result, getKeyword()));
         for (Site site : mSites) mExecutor.execute(() -> search(site));
@@ -155,10 +159,6 @@ public class CollectActivity extends BaseActivity {
             mBinding.pager.setCurrentItem(mBinding.recycler.getSelectedPosition());
         }
     };
-
-    private CollectFragment getFragment() {
-        return (CollectFragment) mPageAdapter.instantiateItem(mBinding.pager, 0);
-    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -211,6 +211,16 @@ public class CollectActivity extends BaseActivity {
 
         @Override
         public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
+        }
+
+        @Nullable
+        @Override
+        public Parcelable saveState() {
+            return null;
+        }
+
+        @Override
+        public void restoreState(@Nullable Parcelable state, @Nullable ClassLoader loader) {
         }
     }
 }

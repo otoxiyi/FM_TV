@@ -12,8 +12,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.os.HandlerCompat;
 
-import com.fongmi.android.tv.api.LiveConfig;
+import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.ui.activity.CrashActivity;
+import com.fongmi.android.tv.utils.LanguageUtil;
 import com.fongmi.android.tv.utils.Notify;
 import com.github.catvod.Init;
 import com.github.catvod.bean.Doh;
@@ -40,7 +41,7 @@ public class App extends Application {
 
     public App() {
         instance = this;
-        executor = Executors.newFixedThreadPool(Constant.THREAD_POOL);
+        executor = Executors.newFixedThreadPool(Constant.THREAD_POOL * 2);
         handler = HandlerCompat.createAsync(Looper.getMainLooper());
         gson = new Gson();
     }
@@ -87,7 +88,7 @@ public class App extends Application {
     }
 
     private LogAdapter getLogAdapter() {
-        return new AndroidLogAdapter(PrettyFormatStrategy.newBuilder().showThreadInfo(false).tag("").build()) {
+        return new AndroidLogAdapter(PrettyFormatStrategy.newBuilder().methodCount(0).showThreadInfo(false).tag("").build()) {
             @Override
             public boolean isLoggable(int priority, String tag) {
                 return true;
@@ -105,7 +106,9 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
         Notify.createChannel();
+        LanguageUtil.init(this);
         Logger.addLogAdapter(getLogAdapter());
+        OkHttp.get().setProxy(Setting.getProxy());
         OkHttp.get().setDoh(Doh.objectFrom(Setting.getDoh()));
         CaocConfig.Builder.create().backgroundMode(CaocConfig.BACKGROUND_MODE_SILENT).errorActivity(CrashActivity.class).apply();
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
@@ -143,6 +146,7 @@ public class App extends Application {
             public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {
             }
         });
+
     }
 
     @Override

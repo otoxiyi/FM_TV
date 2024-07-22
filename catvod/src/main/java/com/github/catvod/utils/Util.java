@@ -1,77 +1,82 @@
 package com.github.catvod.utils;
 
-import android.net.Uri;
-import android.os.Build;
-import android.provider.Settings;
+import android.content.Context;
+import android.net.wifi.WifiManager;
 import android.text.TextUtils;
+import android.text.format.Formatter;
 import android.util.Base64;
 
 import com.github.catvod.Init;
 
+import org.mozilla.universalchardet.UniversalDetector;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.math.BigInteger;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
+import java.util.Enumeration;
+
+import okhttp3.OkHttp;
 
 public class Util {
 
-    public static final String[] UNITS = new String[]{"bytes", "KB", "MB", "GB", "TB"};
+    public static final String OKHTTP = "okhttp/" + OkHttp.VERSION;
+    public static final String CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+    public static final int URL_SAFE = Base64.DEFAULT | Base64.URL_SAFE | Base64.NO_WRAP;
 
-    public static String getDeviceId() {
-        return Settings.Secure.getString(Init.context().getContentResolver(), Settings.Secure.ANDROID_ID);
-    }
-
-    public static String getDeviceName() {
-        String model = Build.MODEL;
-        String manufacturer = Build.MANUFACTURER;
-        return model.startsWith(manufacturer) ? model : manufacturer + " " + model;
-    }
-
-    public static String base64(String ext) {
-        return base64(ext.getBytes());
+    public static String base64(String s) {
+        return base64(s.getBytes());
     }
 
     public static String base64(byte[] bytes) {
-        return Base64.encodeToString(bytes, Base64.DEFAULT | Base64.NO_WRAP);
+        return base64(bytes, Base64.DEFAULT | Base64.NO_WRAP);
     }
 
-    public static String substring(String text) {
-        return substring(text, 1);
+    public static String base64(String s, int flags) {
+        return base64(s.getBytes(), flags);
     }
 
-    public static String substring(String text, int num) {
-        if (text != null && text.length() > num) return text.substring(0, text.length() - num);
-        return text;
+    public static String base64(byte[] bytes, int flags) {
+        return Base64.encodeToString(bytes, flags);
     }
 
-    public static String scheme(String url) {
-        return url == null ? "" : scheme(Uri.parse(url));
+    public static byte[] decode(String s) {
+        return decode(s, Base64.DEFAULT | Base64.NO_WRAP);
     }
 
-    public static String scheme(Uri uri) {
-        String scheme = uri.getScheme();
-        return scheme == null ? "" : scheme.toLowerCase().trim();
+    public static byte[] decode(String s, int flags) {
+        return Base64.decode(s, flags);
     }
 
-    public static String host(String url) {
-        return url == null ? "" : host(Uri.parse(url));
+    public static String basic(String userInfo) {
+        return "Basic " + base64(userInfo, Base64.NO_WRAP);
     }
 
-    public static String host(Uri uri) {
-        String host = uri.getHost();
-        return host == null ? "" : host.toLowerCase().trim();
+    public static byte[] hex2byte(String s) {
+        byte[] bytes = new byte[s.length() / 2];
+        for (int i = 0; i < bytes.length; i++) bytes[i] = Integer.valueOf(s.substring(i * 2, i * 2 + 2), 16).byteValue();
+        return bytes;
     }
 
-    public static String path(Uri uri) {
-        String path = uri.getPath();
-        return path == null ? "" : path.trim();
+    public static boolean equals(String name, String md5) {
+        return md5(Path.jar(name)).equalsIgnoreCase(md5);
     }
 
-    public static String basic(Uri uri) {
-        return "Basic " + base64(uri.getUserInfo());
+    public static byte[] utf8(byte[] bytes) {
+        try {
+            UniversalDetector detector = new UniversalDetector(null);
+            detector.handleData(bytes, 0, bytes.length);
+            detector.dataEnd();
+            return new String(bytes, detector.getDetectedCharset()).getBytes(StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return bytes;
+        }
     }
 
     public static String md5(String src) {
@@ -92,9 +97,9 @@ public class Util {
         try {
             MessageDigest digest = MessageDigest.getInstance("MD5");
             FileInputStream fis = new FileInputStream(file);
-            byte[] byteArray = new byte[1024];
+            byte[] bytes = new byte[4096];
             int count;
-            while ((count = fis.read(byteArray)) != -1) digest.update(byteArray, 0, count);
+            while ((count = fis.read(bytes)) != -1) digest.update(bytes, 0, count);
             fis.close();
             StringBuilder sb = new StringBuilder();
             for (byte b : digest.digest()) sb.append(Integer.toString((b & 0xff) + 0x100, 16).substring(1));
@@ -104,21 +109,35 @@ public class Util {
         }
     }
 
-    public static boolean equals(String name, String md5) {
-        return md5(Path.jar(name)).equalsIgnoreCase(md5);
-    }
-
-    public static long format(SimpleDateFormat format, String src) {
+    public static boolean containOrMatch(String text, String regex) {
         try {
-            return format.parse(src).getTime();
+            return text.contains(regex) || text.matches(regex);
         } catch (Exception e) {
-            return 0;
+            return false;
         }
     }
 
-    public static String size(long size) {
-        if (size <= 0) return "";
-        int group = (int) (Math.log10(size) / Math.log10(1024));
-        return "[" + new DecimalFormat("###0.#").format(size / Math.pow(1024, group)) + " " + UNITS[group] + "] ";
+    public static String getIp() {
+        try {
+            WifiManager manager = (WifiManager) Init.context().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            int address = manager.getConnectionInfo().getIpAddress();
+            if (address != 0) return Formatter.formatIpAddress(address);
+            return getHostAddress();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static String getHostAddress() throws SocketException {
+        for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements(); ) {
+            NetworkInterface interfaces = en.nextElement();
+            for (Enumeration<InetAddress> addresses = interfaces.getInetAddresses(); addresses.hasMoreElements(); ) {
+                InetAddress inetAddress = addresses.nextElement();
+                if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
+                    return inetAddress.getHostAddress();
+                }
+            }
+        }
+        return "";
     }
 }

@@ -1,14 +1,17 @@
 package com.fongmi.android.tv.utils;
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
+import android.Manifest;
+import android.app.Notification;
 import android.content.Context;
-import android.os.Build;
+import android.content.pm.PackageManager;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationChannelCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.databinding.ViewProgressBinding;
@@ -17,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 public class Notify {
 
     public static final String DEFAULT = "default";
+    public static final int ID = 9527;
     private AlertDialog mDialog;
     private Toast mToast;
 
@@ -29,14 +33,18 @@ public class Notify {
     }
 
     public static void createChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        NotificationManager notifyMgr = (NotificationManager) App.get().getSystemService(Context.NOTIFICATION_SERVICE);
-        notifyMgr.createNotificationChannel(new NotificationChannel(DEFAULT, "預設", NotificationManager.IMPORTANCE_HIGH));
+        NotificationManagerCompat notifyMgr = NotificationManagerCompat.from(App.get());
+        notifyMgr.createNotificationChannel(new NotificationChannelCompat.Builder(DEFAULT, NotificationManagerCompat.IMPORTANCE_LOW).setName("TV").build());
     }
 
     public static String getError(int resId, Throwable e) {
         if (TextUtils.isEmpty(e.getMessage())) return ResUtil.getString(resId);
         return ResUtil.getString(resId) + "\n" + e.getMessage();
+    }
+
+    public static void show(Notification notification) {
+        if (ActivityCompat.checkSelfPermission(App.get(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
+        NotificationManagerCompat.from(App.get()).notify(ID, notification);
     }
 
     public static void show(int resId) {

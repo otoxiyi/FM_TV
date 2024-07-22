@@ -1,20 +1,12 @@
 package com.fongmi.android.tv.server;
 
-import android.content.Context;
-import android.net.wifi.WifiManager;
-import android.text.format.Formatter;
-
-import com.fongmi.android.tv.App;
-import com.fongmi.quickjs.utils.Proxy;
-
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Enumeration;
+import com.fongmi.android.tv.player.Players;
+import com.github.catvod.Proxy;
+import com.github.catvod.utils.Util;
 
 public class Server {
 
+    private Players player;
     private Nano nano;
     private int port;
 
@@ -30,8 +22,24 @@ public class Server {
         this.port = 9978;
     }
 
+    public int getPort() {
+        return port;
+    }
+
+    public Players getPlayer() {
+        return player;
+    }
+
+    public void setPlayer(Players player) {
+        this.player = player;
+    }
+
     public String getAddress() {
         return getAddress(false);
+    }
+
+    public String getAddress(int tab) {
+        return getAddress(false) + "?tab=" + tab;
     }
 
     public String getAddress(String path) {
@@ -39,7 +47,7 @@ public class Server {
     }
 
     public String getAddress(boolean local) {
-        return "http://" + (local ? "127.0.0.1" : getIP()) + ":" + port;
+        return "http://" + (local ? "127.0.0.1" : Util.getIp()) + ":" + getPort();
     }
 
     public void start() {
@@ -59,33 +67,7 @@ public class Server {
     }
 
     public void stop() {
-        if (nano != null) {
-            nano.stop();
-            nano = null;
-        }
-    }
-
-    public String getIP() {
-        try {
-            WifiManager manager = (WifiManager) App.get().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            int address = manager.getConnectionInfo().getIpAddress();
-            if (address != 0) return Formatter.formatIpAddress(address);
-            return getHostAddress();
-        } catch (Exception e) {
-            return "";
-        }
-    }
-
-    private String getHostAddress() throws SocketException {
-        for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements(); ) {
-            NetworkInterface interfaces = en.nextElement();
-            for (Enumeration<InetAddress> addresses = interfaces.getInetAddresses(); addresses.hasMoreElements(); ) {
-                InetAddress inetAddress = addresses.nextElement();
-                if (!inetAddress.isLoopbackAddress() && inetAddress instanceof Inet4Address) {
-                    return inetAddress.getHostAddress();
-                }
-            }
-        }
-        return "";
+        if (nano != null) nano.stop();
+        nano = null;
     }
 }

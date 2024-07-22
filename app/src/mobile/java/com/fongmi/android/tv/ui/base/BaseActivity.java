@@ -3,16 +3,19 @@ package com.fongmi.android.tv.ui.base;
 import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.DisplayCutout;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Setting;
-import com.fongmi.android.tv.api.WallConfig;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -33,9 +36,15 @@ public abstract class BaseActivity extends AppCompatActivity {
         if (transparent()) setTransparent(this);
         setContentView(getBinding().getRoot());
         EventBus.getDefault().register(this);
-        setWall();
         initView(savedInstanceState);
+        setBackCallback();
         initEvent();
+    }
+
+    @Override
+    public void setContentView(View view) {
+        super.setContentView(view);
+        refreshWall();
     }
 
     protected Activity getActivity() {
@@ -50,10 +59,17 @@ public abstract class BaseActivity extends AppCompatActivity {
         return true;
     }
 
+    protected boolean handleBack() {
+        return false;
+    }
+
     protected void initView(Bundle savedInstanceState) {
     }
 
     protected void initEvent() {
+    }
+
+    protected void onBackPress() {
     }
 
     protected boolean isVisible(View view) {
@@ -64,15 +80,33 @@ public abstract class BaseActivity extends AppCompatActivity {
         return view.getVisibility() == View.GONE;
     }
 
-    private void setWall() {
-        try {
-            if (!customWall()) return;
-            File file = FileUtil.getWall(Setting.getWall());
-            if (file.exists() && file.length() > 0) getWindow().setBackgroundDrawable(WallConfig.drawable(Drawable.createFromPath(file.getAbsolutePath())));
-            else getWindow().setBackgroundDrawableResource(ResUtil.getDrawable(file.getName()));
-        } catch (Exception e) {
-            getWindow().setBackgroundDrawableResource(R.drawable.wallpaper_1);
-        }
+    protected void setPadding(ViewGroup layout) {
+        setPadding(layout, false);
+    }
+
+    protected void setPadding(ViewGroup layout, boolean leftOnly) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+        DisplayCutout cutout = ResUtil.getDisplay(this).getCutout();
+        if (cutout == null) return;
+        int top = cutout.getSafeInsetTop();
+        int left = cutout.getSafeInsetLeft();
+        int right = cutout.getSafeInsetRight();
+        int bottom = cutout.getSafeInsetBottom();
+        int padding = left | right | top | bottom;
+        layout.setPadding(padding, 0, leftOnly ? 0 : padding, 0);
+    }
+
+    protected void noPadding(ViewGroup layout) {
+        layout.setPadding(0, 0, 0, 0);
+    }
+
+    private void setBackCallback() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(handleBack()) {
+            @Override
+            public void handleOnBackPressed() {
+                onBackPress();
+            }
+        });
     }
 
     private void setTransparent(Activity activity) {
@@ -82,11 +116,20 @@ public abstract class BaseActivity extends AppCompatActivity {
         activity.getWindow().setStatusBarColor(Color.TRANSPARENT);
     }
 
+    private void refreshWall() {
+        try {
+            if (!customWall()) return;
+            File file = FileUtil.getWall(Setting.getWall());
+            if (file.exists() && file.length() > 0) getWindow().setBackgroundDrawable(Drawable.createFromPath(file.getAbsolutePath()));
+            else getWindow().setBackgroundDrawableResource(ResUtil.getDrawable(file.getName()));
+        } catch (Exception e) {
+            getWindow().setBackgroundDrawableResource(R.drawable.wallpaper_1);
+        }
+    }
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onRefreshEvent(RefreshEvent event) {
-        if (event.getType() != RefreshEvent.Type.WALL) return;
-        WallConfig.get().setDrawable(null);
-        setWall();
+        if (event.getType() == RefreshEvent.Type.WALL) refreshWall();
     }
 
     @Override

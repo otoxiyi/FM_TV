@@ -26,6 +26,8 @@ public interface ITrackInfo {
 
     String getLanguage();
 
+    String getMimeType();
+
     int getTrackType();
 
     int getChannelCount();
@@ -35,4 +37,6 @@ public interface ITrackInfo {
     int getWidth();
 
     int getHeight();
+
+    float getFps();
 }

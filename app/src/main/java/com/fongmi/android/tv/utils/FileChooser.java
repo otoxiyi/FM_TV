@@ -13,11 +13,12 @@ import android.provider.MediaStore;
 
 import androidx.fragment.app.Fragment;
 
+import com.fongmi.android.tv.App;
 import com.github.catvod.utils.Path;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.net.URLDecoder;
 
 public class FileChooser {
 
@@ -25,31 +26,66 @@ public class FileChooser {
 
     private final Fragment fragment;
 
+    private static int type;
+    public static final int TYPE_APK = 0;
+    public static final int TYPE_PUSH_WALLPAPER = 1;
+
     public static FileChooser from(Fragment fragment) {
         return new FileChooser(fragment);
     }
 
     private FileChooser(Fragment fragment) {
         this.fragment = fragment;
+        type(-1);
+    }
+
+    public static int type() {
+        return type;
+    }
+
+    public FileChooser type(int t) {
+        type = t;
+        return this;
     }
 
     public void show() {
         show("*/*");
     }
 
-    public void show(String mimeType) {
-        show(mimeType, REQUEST_PICK_FILE);
+    public void show(Uri uri) {
+        show(uri, "*/*");
     }
 
-    public void show(String mimeType, int code) {
-        String[] mimeTypes = mimeType.split(" ");
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.setType(mimeTypes[0]);
+    public void show(String mimeType) {
+        show(mimeType, new String[]{"*/*"}, null, REQUEST_PICK_FILE);
+    }
+
+    public void show(String[] mimeTypes) {
+        show("*/*", mimeTypes, null, REQUEST_PICK_FILE);
+    }
+
+    public void show(Uri uri, String mimeType) {
+        show(mimeType, new String[]{"*/*"}, uri, REQUEST_PICK_FILE);
+    }
+
+    public void show(String mimeType, String[] mimeTypes, Uri uri, int code) {
+        Intent intent = new Intent(Util.isTvBox() ? Intent.ACTION_GET_CONTENT : Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType(mimeType);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-        intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
-        Intent destIntent = Intent.createChooser(intent, "");
-        if (fragment != null) fragment.startActivityForResult(destIntent, code);
+        intent.putExtra("android.content.extra.SHOW_ADVANCED", true);
+        if (uri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri);
+        if (intent.resolveActivity(App.get().getPackageManager()) == null) return;
+        if (fragment != null) fragment.startActivityForResult(Intent.createChooser(intent, ""), code);
+    }
+
+    public static boolean isValid(Context context, Uri uri) {
+        try {
+            return DocumentsContract.isDocumentUri(context, uri) || ContentResolver.SCHEME_CONTENT.equals(uri.getScheme()) || ContentResolver.SCHEME_FILE.equalsIgnoreCase(uri.getScheme());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public static String getPathFromUri(Context context, Uri uri) {
@@ -58,7 +94,7 @@ public class FileChooser {
         if (DocumentsContract.isDocumentUri(context, uri)) path = getPathFromDocumentUri(context, uri);
         else if (ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) path = getDataColumn(context, uri);
         else if (ContentResolver.SCHEME_FILE.equalsIgnoreCase(uri.getScheme())) path = uri.getPath();
-        return path != null ? path : createFileFromUri(context, uri);
+        return path != null ? URLDecoder.decode(path) : createFileFromUri(context, uri);
     }
 
     private static String getPathFromDocumentUri(Context context, Uri uri) {
@@ -109,14 +145,9 @@ public class FileChooser {
             if (cursor == null || !cursor.moveToFirst()) return null;
             InputStream is = context.getContentResolver().openInputStream(uri);
             if (is == null) return null;
-            int count;
-            byte[] buffer = new byte[4096];
             int column = cursor.getColumnIndexOrThrow(projection[0]);
             File file = Path.cache(cursor.getString(column));
-            FileOutputStream os = new FileOutputStream(file);
-            while ((count = is.read(buffer)) != -1) os.write(buffer, 0, count);
-            os.close();
-            is.close();
+            Path.copy(is, file);
             return file.getAbsolutePath();
         } catch (Exception e) {
             return null;
@@ -167,6 +198,10 @@ public class FileChooser {
         } else {
             return MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         }
+    }
+
+    public static Uri getUri(String path) {
+        return Uri.parse("content://com.android.externalstorage.documents/document/primary:" + path);
     }
 
     private static boolean isExternalStorageDocument(Uri uri) {

@@ -36,6 +36,7 @@ public class Drm {
     }
 
     private UUID getUUID() {
+        if (getType().contains("playready")) return C.PLAYREADY_UUID;
         if (getType().contains("widevine")) return C.WIDEVINE_UUID;
         if (getType().contains("clearkey")) return C.CLEARKEY_UUID;
         return C.UUID_NIL;
@@ -43,7 +44,7 @@ public class Drm {
 
     private String getUri() {
         if (getKey().startsWith("http")) return getKey();
-        return Server.get().getAddress("license/") + Util.base64(getKey());
+        return Server.get().getAddress("license/") + Util.base64(getKey(), Util.URL_SAFE);
     }
 
     public MediaItem.DrmConfiguration get() {

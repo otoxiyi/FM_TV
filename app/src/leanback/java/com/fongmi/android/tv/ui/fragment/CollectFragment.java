@@ -20,7 +20,7 @@ import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.FragmentVodBinding;
 import com.fongmi.android.tv.model.SiteViewModel;
-import com.fongmi.android.tv.ui.activity.DetailActivity;
+import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.activity.VodActivity;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
@@ -90,7 +90,7 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
 
     @Override
     protected void initData() {
-        addVideo(mCollect.getList());
+        if (mCollect != null) addVideo(mCollect.getList());
     }
 
     private boolean checkLastSize(List<Vod> items) {
@@ -118,7 +118,7 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
     public void onItemClick(Vod item) {
         getActivity().setResult(Activity.RESULT_OK);
         if (item.isFolder()) VodActivity.start(getActivity(), item.getSiteKey(), Result.folder(item));
-        else DetailActivity.start(getActivity(), item.getSiteKey(), item.getVodId(), item.getVodName(), item.getVodPic());
+        else VideoActivity.collect(getActivity(), item.getSiteKey(), item.getVodId(), item.getVodName(), item.getVodPic());
     }
 
     @Override
@@ -128,7 +128,7 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
 
     @Override
     public void onLoadMore(String page) {
-        if (mCollect.getSite().getKey().equals("all")) return;
+        if (mCollect == null || "all".equals(mCollect.getSite().getKey())) return;
         mViewModel.searchContent(mCollect.getSite(), getKeyword(), page);
         mScroller.setLoading(true);
     }

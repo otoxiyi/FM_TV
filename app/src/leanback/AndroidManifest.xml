@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fongmi.android.tv">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -15,6 +14,8 @@
         android:required="false" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application android:banner="@drawable/ic_banner">
 
@@ -28,9 +29,8 @@
 
         <activity
             android:name=".ui.activity.HomeActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:exported="true"
-            android:launchMode="singleTask"
             android:screenOrientation="sensorLandscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -63,6 +63,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data android:scheme="smb" />
+                <data android:scheme="rtmp" />
+                <data android:scheme="rtsp" />
                 <data android:scheme="http" />
                 <data android:scheme="https" />
                 <data android:mimeType="video/*" />
@@ -78,63 +80,99 @@
                 <data android:scheme="ed2k" />
                 <data android:scheme="magnet" />
                 <data android:scheme="thunder" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="mitv" />
                 <data android:scheme="jianpian" />
             </intent-filter>
         </activity>
 
         <activity
+            android:name=".ui.activity.CastActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="sensorLandscape">
+            <intent-filter>
+                <action android:name="${applicationId}.cast" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".ui.activity.VodActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape" />
 
         <activity
             android:name=".ui.activity.LiveActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/AppTheme.Live" />
+
+        <activity
+            android:name=".ui.activity.VideoActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape" />
 
         <activity
-            android:name=".ui.activity.DetailActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:name=".ui.activity.HistoryActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape" />
 
         <activity
             android:name=".ui.activity.KeepActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape" />
 
         <activity
             android:name=".ui.activity.PushActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape" />
 
         <activity
             android:name=".ui.activity.SearchActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape"
             android:windowSoftInputMode="stateHidden" />
 
         <activity
             android:name=".ui.activity.CollectActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape" />
 
         <activity
             android:name=".ui.activity.SettingActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape" />
 
         <activity
             android:name=".ui.activity.SettingPlayerActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
             android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".ui.activity.SettingDanmuActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
+            android:screenOrientation="sensorLandscape" />
+
+        <activity
+            android:name=".ui.activity.SettingCustomActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|orientation"
+            android:screenOrientation="sensorLandscape" />
+
+        <service
+            android:name="com.android.cast.dlna.dmr.DLNARendererService"
+            android:exported="false" />
+
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:exported="true"
+            android:priority="999">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>

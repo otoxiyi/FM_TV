@@ -6,18 +6,16 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 
-import com.fongmi.android.tv.player.extractor.Magnet;
-import com.fongmi.android.tv.utils.Sniffer;
-import com.fongmi.android.tv.utils.Utils;
+import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.utils.Trans;
-import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
 import org.simpleframework.xml.Attribute;
 import org.simpleframework.xml.Text;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -59,6 +57,10 @@ public class Flag implements Parcelable {
 
     public String getFlag() {
         return TextUtils.isEmpty(flag) ? "" : flag;
+    }
+
+    public void setFlag(String flag) {
+        this.flag = flag;
     }
 
     public String getUrls() {
@@ -107,33 +109,21 @@ public class Flag implements Parcelable {
     }
 
     public Episode find(String remarks, boolean strict) {
-        int number = Utils.getDigit(remarks);
+        int number = Util.getDigit(remarks);
         if (getEpisodes().size() == 0) return null;
         if (getEpisodes().size() == 1) return getEpisodes().get(0);
         for (Episode item : getEpisodes()) if (item.rule1(remarks)) return item;
         for (Episode item : getEpisodes()) if (item.rule2(number)) return item;
-        for (Episode item : getEpisodes()) if (item.rule3(remarks)) return item;
-        for (Episode item : getEpisodes()) if (item.rule4(remarks)) return item;
+        if (number == -1) for (Episode item : getEpisodes()) if (item.rule3(remarks)) return item;
+        if (number == -1) for (Episode item : getEpisodes()) if (item.rule4(remarks)) return item;
         if (getPosition() != -1) return getEpisodes().get(getPosition());
         return strict ? null : getEpisodes().get(0);
-    }
-
-    public List<Magnet> getMagnet() {
-        Iterator<Episode> iterator = getEpisodes().iterator();
-        List<Magnet> items = new ArrayList<>();
-        while (iterator.hasNext()) {
-            String url = iterator.next().getUrl();
-            if (!Sniffer.isThunder(url)) continue;
-            items.add(Magnet.get(url));
-            iterator.remove();
-        }
-        return items;
     }
 
     public static List<Flag> create(String flag, String name, String url) {
         Flag item = Flag.create(flag);
         item.getEpisodes().add(Episode.create(name, url));
-        return List.of(item);
+        return Arrays.asList(item);
     }
 
     @Override
@@ -147,7 +137,7 @@ public class Flag implements Parcelable {
     @NonNull
     @Override
     public String toString() {
-        return new Gson().toJson(this);
+        return App.gson().toJson(this);
     }
 
     @Override

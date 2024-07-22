@@ -64,22 +64,32 @@ public class IjkTrackInfo implements ITrackInfo {
     }
 
     @Override
+    public String getMimeType() {
+        if (mStreamMeta == null) return "";
+        return mStreamMeta.getCodecName();
+    }
+
+    @Override
     public int getChannelCount() {
+        if (mStreamMeta == null) return 0;
         return mStreamMeta.getChannelCount();
     }
 
     @Override
     public int getBitrate() {
+        if (mStreamMeta == null) return 0;
         return (int) mStreamMeta.mBitrate;
     }
 
     @Override
     public int getWidth() {
+        if (mStreamMeta == null) return 0;
         return mStreamMeta.mWidth;
     }
 
     @Override
     public int getHeight() {
+        if (mStreamMeta == null) return 0;
         return mStreamMeta.mHeight;
     }
 
@@ -90,5 +100,12 @@ public class IjkTrackInfo implements ITrackInfo {
 
     public void setTrackType(int trackType) {
         mTrackType = trackType;
+    }
+
+    @Override
+    public float getFps() {
+        if (mStreamMeta == null) return 0;
+        if (mStreamMeta.mFpsNum == 0 || mStreamMeta.mFpsDen == 0) return 0;
+        return mStreamMeta.mFpsNum / mStreamMeta.mFpsDen;
     }
 }

@@ -4,13 +4,23 @@ from importlib.machinery import SourceFileLoader
 import json
 
 
-def create_file(file_path):
-    if os.path.exists(file_path) is False:
-        os.makedirs(file_path)
+def spider(cache, api):
+    name = os.path.basename(api)
+    path = cache + '/' + name
+    download(path, api)
+    name = name.split('.')[0]
+    return SourceFileLoader(name, path).load_module().Spider()
 
 
-def write_file(name, content):
-    with open(name, 'wb') as f:
+def download(path, api):
+    if api.startswith('http'):
+        writeFile(path, redirect(api).content)
+    else:
+        writeFile(path, str.encode(api))
+
+
+def writeFile(path, content):
+    with open(path, 'wb') as f:
         f.write(content)
 
 
@@ -22,25 +32,22 @@ def redirect(url):
         return rsp
 
 
-def download_file(name, ext):
-    if ext.startswith('http'):
-        write_file(name, redirect(ext).content)
-    else:
-        write_file(name, str.encode(ext))
-
-
-def init_py(path, name, ext):
-    py_name = path + '/' + name + '.py'
-    download_file(py_name, ext)
-    return SourceFileLoader(name, py_name).load_module().Spider()
-
-
 def str2json(content):
     return json.loads(content)
 
 
+def getDependence(ru):
+    result = ru.getDependence()
+    return result
+
+
+def getName(ru):
+    result = ru.getName()
+    return result
+
+
 def init(ru, extend):
-    ru.init([""])
+    ru.init(extend)
 
 
 def homeContent(ru, filter):
@@ -79,9 +86,19 @@ def searchContent(ru, key, quick):
     return formatJo
 
 
+def searchContentPage(ru, key, quick, pg):
+    result = ru.searchContentPage(key, quick, pg)
+    formatJo = json.dumps(result, ensure_ascii=False)
+    return formatJo
+
+
 def localProxy(ru, param):
     result = ru.localProxy(str2json(param))
     return result
+
+
+def destroy(ru):
+    ru.destroy()
 
 
 def run():

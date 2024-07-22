@@ -11,7 +11,7 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.player.Source;
 import com.forcetech.Util;
 import com.github.catvod.net.OkHttp;
-import com.github.catvod.utils.Github;
+import com.google.common.net.HttpHeaders;
 
 import java.util.HashSet;
 
@@ -23,11 +23,11 @@ public class Force implements Source.Extractor {
 
     @Override
     public boolean match(String scheme, String host) {
-        return !scheme.equals("push") && scheme.startsWith("p") || scheme.equals("mitv");
+        return !"push".equals(scheme) && scheme.startsWith("p") || "mitv".equals(scheme);
     }
 
     private void init(String scheme) {
-        App.get().bindService(Util.intent(App.get(), scheme, Github.getSo(scheme)), mConn, Context.BIND_AUTO_CREATE);
+        App.get().bindService(Util.intent(App.get(), scheme), mConn, Context.BIND_AUTO_CREATE);
     }
 
     @Override
@@ -40,7 +40,7 @@ public class Force implements Source.Extractor {
         String id = uri.getLastPathSegment();
         String cmd = "http://127.0.0.1:" + port + "/cmd.xml?cmd=switch_chan&server=" + uri.getHost() + ":" + uri.getPort() + "&id=" + id;
         String result = "http://127.0.0.1:" + port + "/" + id;
-        OkHttp.newCall(cmd, Headers.of("user-agent", "MTV")).execute().body().string();
+        OkHttp.newCall(cmd, Headers.of(HttpHeaders.USER_AGENT, "MTV")).execute().body().string();
         return result;
     }
 

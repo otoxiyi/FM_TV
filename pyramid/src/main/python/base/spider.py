@@ -1,9 +1,12 @@
 import re
+import os
 import json
 import requests
 from lxml import etree
+from com.chaquo.python import Python
 from abc import abstractmethod, ABCMeta
 from importlib.machinery import SourceFileLoader
+from com.github.catvod import Proxy
 
 
 class Spider(metaclass=ABCMeta):
@@ -40,6 +43,9 @@ class Spider(metaclass=ABCMeta):
     def searchContent(self, key, quick):
         pass
 
+    def searchContentPage(self, key, quick, pg):
+        pass
+
     @abstractmethod
     def playerContent(self, flag, id, vipFlags):
         pass
@@ -60,50 +66,68 @@ class Spider(metaclass=ABCMeta):
     def getName(self):
         pass
 
+    def destroy(self):
+        pass
+
     def getDependence(self):
         return []
 
-    def setExtendInfo(self, extend):
-        self.extend = extend
+    def loadSpider(self, name):
+        return self.loadModule(name).Spider()
 
-    def regStr(self, src, reg, group=1):
-        m = re.search(reg, src)
-        src = ''
-        if m:
-            src = m.group(group)
-        return src
+    def loadModule(self, name):
+        cache_dir = Python.getPlatform().getApplication().getCacheDir().getAbsolutePath()
+        path = os.path.join(os.path.join(cache_dir, 'py'),  f'{name}.py')
+        return SourceFileLoader(name, path).load_module()
 
-    def str2json(self, str):
-        return json.loads(str)
+    def removeHtmlTags(self, src):
+        clean = re.compile('<.*?>')
+        return re.sub(clean, '', src)
 
     def cleanText(self, src):
         clean = re.sub('[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]', '', src)
         return clean
 
-    def fetch(self, url, headers={}, cookies=""):
-        rsp = requests.get(url, headers=headers, cookies=cookies)
+    def fetch(self, url, params=None, cookies=None, headers=None, timeout=5, verify=True, stream=False, allow_redirects = True):
+        rsp = requests.get(url, params=params, cookies=cookies, headers=headers, timeout=timeout, verify=verify, stream=stream, allow_redirects=allow_redirects)
         rsp.encoding = 'utf-8'
         return rsp
 
-    def post(self, url, data, headers={}, cookies={}):
-        rsp = requests.post(url, data=data, headers=headers, cookies=cookies)
-        rsp.encoding = 'utf-8'
-        return rsp
-
-    def postJson(self, url, json, headers={}, cookies={}):
-        rsp = requests.post(url, json=json, headers=headers, cookies=cookies)
+    def post(self, url, params=None, data=None, json=None, cookies=None, headers=None, timeout=5, verify=True, stream=False, allow_redirects = True):
+        rsp = requests.post(url, params=params, data=data, json=json, cookies=cookies, headers=headers, timeout=timeout, verify=verify, stream=stream, allow_redirects=allow_redirects)
         rsp.encoding = 'utf-8'
         return rsp
 
     def html(self, content):
         return etree.HTML(content)
 
-    def xpText(self, root, expr):
-        ele = root.xpath(expr)
-        if len(ele) == 0:
-            return ''
-        else:
-            return ele[0]
+    def getProxyUrl(self, local=True):
+        return f'{Proxy.getUrl(local)}?do=py'
 
-    def loadModule(self, name, fileName):
-        return SourceFileLoader(name, fileName).load_module()
+    def getCache(self, key):
+        value = self.fetch(f'http://127.0.0.1:{Proxy.getPort()}/cache?do=get&key={key}', timeout=5).text
+        if len(value) > 0:
+            if value.startswith('{') and value.endswith('}') or value.startswith('[') and value.endswith(']'):
+                value = json.loads(value)
+                if type(value) == dict:
+                    if not 'expiresAt' in value or value['expiresAt'] >= int(time.time()):
+                        return value
+                    else:
+                        self.delCache(key)
+                        return None
+            return value
+        else:
+            return None
+
+    def setCache(self, key, value):
+        if type(value) in [int, float]:
+            value = str(value)
+        if len(value) > 0:
+            if type(value) == dict or type(value) == list:
+                value = json.dumps(value, ensure_ascii=False)
+        r = self.post(f'http://127.0.0.1:{Proxy.getPort()}/cache?do=set&key={key}', data={"value": value}, timeout=5)
+        return 'succeed' if r.status_code == 200 else 'failed'
+
+    def delCache(self, key):
+        r = self.fetch(f'http://127.0.0.1:{Proxy.getPort()}/cache?do=del&key={key}', timeout=5)
+        return 'succeed' if r.status_code == 200 else 'failed'

@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
+import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -86,12 +88,12 @@ public class ResUtil {
         return e.getRawX() < edge || e.getRawX() > getScreenWidthNav() - edge || e.getRawY() < edge || e.getRawY() > getScreenHeightNav() - edge;
     }
 
-    public static boolean isLand(Activity activity) {
-        return activity.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    public static boolean isLand(Context context) {
+        return context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
 
-    public static boolean isPort(Activity activity) {
-        return activity.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
+    public static boolean isPad() {
+        return App.get().getResources().getConfiguration().smallestScreenWidthDp >= 600;
     }
 
     public static int sp2px(int sp) {
@@ -107,15 +109,19 @@ public class ResUtil {
     }
 
     public static String getString(@StringRes int resId) {
-        return App.get().getString(resId);
+        return App.get().getResources().getString(resId);
     }
 
     public static String getString(@StringRes int resId, Object... formatArgs) {
-        return App.get().getString(resId, formatArgs);
+        return App.get().getResources().getString(resId, formatArgs);
     }
 
     public static String[] getStringArray(@ArrayRes int resId) {
         return App.get().getResources().getStringArray(resId);
+    }
+
+    public static TypedArray getTypedArray(@ArrayRes int resId) {
+        return App.get().getResources().obtainTypedArray(resId);
     }
 
     public static Drawable getDrawable(@DrawableRes int resId) {
@@ -124,5 +130,15 @@ public class ResUtil {
 
     public static Animation getAnim(@AnimRes int resId) {
         return AnimationUtils.loadAnimation(App.get(), resId);
+    }
+
+    public static Display getDisplay(Activity activity) {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ? activity.getDisplay() : activity.getWindowManager().getDefaultDisplay();
+    }
+
+    public static int getTextWidth(String content, int size) {
+        Paint paint = new Paint();
+        paint.setTextSize(sp2px(size));
+        return (int) paint.measureText(content);
     }
 }

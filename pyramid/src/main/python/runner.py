@@ -26,6 +26,9 @@ class Runner():
     def searchContent(self, key, quick):
         return self.spider.searchContent(key, quick)
 
+    def searchContentPage(self, key, quick, pg):
+        return self.spider.searchContentPage(key, quick, pg)
+
     def playerContent(self, flag, id, vipFlags):
         return self.spider.playerContent(flag, id, vipFlags)
 
@@ -37,3 +40,6 @@ class Runner():
 
     def manualVideoCheck(self):
         return self.spider.manualVideoCheck()
+
+    def destroy(self):
+        return self.spider.destroy()

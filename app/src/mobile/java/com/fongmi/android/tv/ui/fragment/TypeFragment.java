@@ -12,17 +12,20 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.Setting;
 import com.fongmi.android.tv.Product;
-import com.fongmi.android.tv.api.ApiConfig;
+import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.bean.Page;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Style;
+import com.fongmi.android.tv.bean.Value;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.FragmentTypeBinding;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.ui.activity.CollectActivity;
 import com.fongmi.android.tv.ui.activity.DetailActivity;
+import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.adapter.VodAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.ui.custom.CustomScroller;
@@ -42,11 +45,12 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     private List<Page> mPages;
     private Page mPage;
 
-    public static TypeFragment newInstance(String key, String typeId, HashMap<String, String> extend, boolean folder) {
+    public static TypeFragment newInstance(String key, String typeId, Style style, HashMap<String, String> extend, boolean folder) {
         Bundle args = new Bundle();
         args.putString("key", key);
         args.putString("typeId", typeId);
         args.putBoolean("folder", folder);
+        args.putParcelable("style", style);
         args.putSerializable("extend", extend);
         TypeFragment fragment = new TypeFragment();
         fragment.setArguments(args);
@@ -61,6 +65,14 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         return mPages.isEmpty() ? getArguments().getString("typeId") : getLastPage().getVodId();
     }
 
+    private Style getStyle() {
+        return isFolder() ? Style.list() : getSite().getStyle(mPages.isEmpty() ? getArguments().getParcelable("style") : getLastPage().getStyle());
+    }
+
+    private boolean isIndexs() {
+        return getSite().isIndexs();
+    }
+
     private HashMap<String, String> getExtend() {
         Serializable extend = getArguments().getSerializable("extend");
         return extend == null ? new HashMap<>() : (HashMap<String, String>) extend;
@@ -71,11 +83,11 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     }
 
     private boolean isHome() {
-        return getTypeId().equals("home");
+        return "home".equals(getTypeId());
     }
 
     private Site getSite() {
-        return ApiConfig.get().getSite(getKey());
+        return VodConfig.get().getSite(getKey());
     }
 
     private VodFragment getParent() {
@@ -84,10 +96,6 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
 
     private Page getLastPage() {
         return mPages.get(mPages.size() - 1);
-    }
-
-    private Style getStyle() {
-        return isFolder() ? Style.list() : getSite().getStyle();
     }
 
     @Override
@@ -106,7 +114,6 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
 
     @Override
     protected void initEvent() {
-        mBinding.swipeLayout.setEnabled(!isHome());
         mBinding.swipeLayout.setOnRefreshListener(this);
         mBinding.recycler.addOnScrollListener(mScroller = new CustomScroller(this));
     }
@@ -124,7 +131,7 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
 
     private void setStyle(Style style) {
         mBinding.recycler.setAdapter(mAdapter = new VodAdapter(this, style, Product.getSpec(getActivity(), style)));
-        mBinding.recycler.setLayoutManager(style.isList() ? new LinearLayoutManager(getActivity()) : new GridLayoutManager(getContext(), Product.getColumn(style)));
+        mBinding.recycler.setLayoutManager(style.isList() ? new LinearLayoutManager(getActivity()) : new GridLayoutManager(getContext(), Product.getColumn(getActivity(), style)));
     }
 
     private void setViewModel() {
@@ -132,15 +139,21 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         mViewModel.result.observe(getViewLifecycleOwner(), this::setAdapter);
     }
 
+    private void getHome() {
+        mViewModel.homeContent();
+        mAdapter.clear();
+    }
+
+
     private void getVideo() {
         mScroller.reset();
         getVideo(getTypeId(), "1");
     }
 
     private void getVideo(String typeId, String page) {
-        if (page.equals("1")) mAdapter.clear();
-        if (page.equals("1") && !mBinding.swipeLayout.isRefreshing()) mBinding.progressLayout.showProgress();
-        if (isHome() && page.equals("1")) setAdapter(getParent().getResult());
+        if ("1".equals(page)) mAdapter.clear();
+        if ("1".equals(page) && !mBinding.swipeLayout.isRefreshing()) mBinding.progressLayout.showProgress();
+        if (isHome() && "1".equals(page)) setAdapter(getParent().getResult());
         else mViewModel.categoryContent(getKey(), typeId, page, true, mExtends);
     }
 
@@ -168,7 +181,7 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     }
 
     private void checkMore(int count) {
-        if (mScroller.isDisable() || count == 0 || mAdapter.getItemCount() >= 40 || isHome()) return;
+        if (mScroller.isDisable() || count == 0 || mBinding.recycler.canScrollVertically(1) || mBinding.recycler.getScrollState() > 0 || isHome()) return;
         getVideo(getTypeId(), String.valueOf(mScroller.addPage()));
     }
 
@@ -190,14 +203,20 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         }
     }
 
-    public void setFilter(String key, String value) {
-        mExtends.put(key, value);
+    public void scrollToTop() {
+        mBinding.recycler.smoothScrollToPosition(0);
+    }
+
+    public void setFilter(String key, Value value) {
+        if (value.isActivated()) mExtends.put(key, value.getV());
+        else mExtends.remove(key);
         onRefresh();
     }
 
     @Override
     public void onRefresh() {
-        getVideo();
+        if (isHome()) getHome();
+        else getVideo();
     }
 
     @Override
@@ -210,11 +229,12 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     @Override
     public void onItemClick(Vod item) {
         if (item.isFolder()) {
-            mPages.add(Page.get(item.getVodId(), findPosition()));
+            mPages.add(Page.get(item, findPosition()));
             getVideo(item.getVodId(), "1");
         } else {
-            if (!isFolder()) DetailActivity.start(getActivity(), getKey(), item.getVodId(), item.getVodName(), item.getVodPic());
-            else DetailActivity.start(getActivity(), getKey(), item.getVodId(), item.getVodName(), item.getVodPic(), item.getVodName());
+            if (isIndexs()) CollectActivity.start(getActivity(), item.getVodName());
+            else if (item.isManga()) DetailActivity.start(getActivity(), getKey(), item.getVodId(), item.getVodName(), item.getVodPic());
+            else VideoActivity.start(getActivity(), getKey(), item.getVodId(), item.getVodName(), item.getVodPic(), isFolder() ? item.getVodName() : null, false);
         }
     }
 

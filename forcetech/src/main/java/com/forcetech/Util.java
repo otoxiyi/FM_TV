@@ -29,7 +29,7 @@ public class Util {
 
     public static String scheme(String url) {
         String scheme = Uri.parse(url).getScheme();
-        if (scheme.equals("P2p")) scheme = "mitv";
+        if ("P2p".equals(scheme)) scheme = "mitv";
         return scheme.toLowerCase();
     }
 
@@ -41,9 +41,9 @@ public class Util {
         return name.toLowerCase();
     }
 
-    public static Intent intent(Context context, String scheme, String path) {
+    public static Intent intent(Context context, String scheme) {
         Intent intent = new Intent(context, clz(scheme));
-        intent.putExtra("path", path);
+        intent.putExtra("scheme", scheme);
         return intent;
     }
 

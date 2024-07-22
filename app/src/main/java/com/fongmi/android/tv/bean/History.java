@@ -9,10 +9,9 @@ import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.api.ApiConfig;
+import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.db.AppDatabase;
 import com.fongmi.android.tv.event.RefreshEvent;
-import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 
@@ -61,12 +60,12 @@ public class History {
     private int cid;
 
     public static History objectFrom(String str) {
-        return new Gson().fromJson(str, History.class);
+        return App.gson().fromJson(str, History.class);
     }
 
     public static List<History> arrayFrom(String str) {
         Type listType = new TypeToken<List<History>>() {}.getType();
-        List<History> items = new Gson().fromJson(str, listType);
+        List<History> items = App.gson().fromJson(str, listType);
         return items == null ? Collections.emptyList() : items;
     }
 
@@ -214,7 +213,7 @@ public class History {
     }
 
     public String getSiteName() {
-        return ApiConfig.get().getSite(getSiteKey()).getName();
+        return VodConfig.get().getSite(getSiteKey()).getName();
     }
 
     public String getSiteKey() {
@@ -250,7 +249,7 @@ public class History {
     }
 
     public static List<History> get() {
-        return get(ApiConfig.getCid());
+        return get(VodConfig.getCid());
     }
 
     public static List<History> get(int cid) {
@@ -258,7 +257,7 @@ public class History {
     }
 
     public static History find(String key) {
-        return AppDatabase.get().getHistoryDao().find(ApiConfig.getCid(), key);
+        return AppDatabase.get().getHistoryDao().find(VodConfig.getCid(), key);
     }
 
     public static void delete(int cid) {
@@ -273,7 +272,8 @@ public class History {
 
     private void merge(List<History> items, boolean force) {
         for (History item : items) {
-            if (!force && (getKey().equals(item.getKey()) || Math.abs(item.getDuration() - getDuration()) > 10 * 60 * 1000)) continue;
+            if (getDuration() > 0 && item.getDuration() > 0 && Math.abs(getDuration() - item.getDuration()) > 10 * 60 * 1000) continue;
+            if (!force && getKey().equals(item.getKey())) continue;
             checkParam(item);
             item.delete();
         }
@@ -300,13 +300,13 @@ public class History {
     }
 
     public History delete() {
-        AppDatabase.get().getHistoryDao().delete(ApiConfig.getCid(), getKey());
+        AppDatabase.get().getHistoryDao().delete(VodConfig.getCid(), getKey());
         AppDatabase.get().getTrackDao().delete(getKey());
         return this;
     }
 
     public List<History> find() {
-        return AppDatabase.get().getHistoryDao().findByName(ApiConfig.getCid(), getVodName());
+        return AppDatabase.get().getHistoryDao().findByName(VodConfig.getCid(), getVodName());
     }
 
     public void findEpisode(List<Flag> flags) {
@@ -334,12 +334,12 @@ public class History {
         for (History target : targets) {
             List<History> items = target.find();
             if (items.isEmpty()) {
-                target.update(ApiConfig.getCid(), items);
+                target.update(VodConfig.getCid(), items);
                 continue;
             }
             for (History item : items) {
                 if (target.getCreateTime() > item.getCreateTime()) {
-                    target.update(ApiConfig.getCid(), items);
+                    target.update(VodConfig.getCid(), items);
                     break;
                 }
             }
@@ -356,6 +356,6 @@ public class History {
     @NonNull
     @Override
     public String toString() {
-        return new Gson().toJson(this);
+        return App.gson().toJson(this);
     }
 }

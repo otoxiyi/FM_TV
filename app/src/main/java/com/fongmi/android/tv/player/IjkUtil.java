@@ -6,7 +6,7 @@ import com.fongmi.android.tv.bean.Channel;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.utils.Sniffer;
-import com.fongmi.android.tv.utils.Utils;
+import com.fongmi.android.tv.utils.UrlUtil;
 
 import java.net.URLEncoder;
 import java.util.Map;
@@ -24,8 +24,7 @@ public class IjkUtil {
     }
 
     public static MediaSource getSource(Map<String, String> headers, String url) {
-        Uri uri = Uri.parse(url.trim().replace("\\", ""));
-        if (Sniffer.isAds(uri)) uri = Uri.parse(Server.get().getAddress().concat("/m3u8?url=").concat(URLEncoder.encode(url)));
-        return new MediaSource(Utils.checkUa(headers), uri);
+        Uri uri = UrlUtil.uri(url);
+        return new MediaSource(Players.checkUa(headers), uri);
     }
 }

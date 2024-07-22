@@ -63,6 +63,12 @@ public class AndroidTrackInfo implements ITrackInfo {
     }
 
     @Override
+    public String getMimeType() {
+        if (mTrackInfo == null || mTrackInfo.getFormat() == null) return "";
+        return mTrackInfo.getFormat().getString(MediaFormat.KEY_MIME);
+    }
+
+    @Override
     public int getChannelCount() {
         if (mTrackInfo == null || mTrackInfo.getFormat() == null) return 0;
         return mTrackInfo.getFormat().getInteger(MediaFormat.KEY_CHANNEL_COUNT);
@@ -93,5 +99,16 @@ public class AndroidTrackInfo implements ITrackInfo {
 
     public void setTrackType(int trackType) {
         mTrackType = trackType;
+    }
+
+    @Override
+    public float getFps() {
+        if (mTrackInfo == null || mTrackInfo.getFormat() == null) return 0;
+        try {
+            return mTrackInfo.getFormat().getFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
     }
 }

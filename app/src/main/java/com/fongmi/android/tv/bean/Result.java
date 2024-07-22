@@ -12,8 +12,6 @@ import com.fongmi.android.tv.gson.MsgAdapter;
 import com.fongmi.android.tv.gson.UrlAdapter;
 import com.github.catvod.utils.Json;
 import com.github.catvod.utils.Trans;
-import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
@@ -24,7 +22,6 @@ import org.simpleframework.xml.Path;
 import org.simpleframework.xml.Root;
 import org.simpleframework.xml.core.Persister;
 
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,38 +45,49 @@ public class Result implements Parcelable {
     @SerializedName("filters")
     @JsonAdapter(FilterAdapter.class)
     private LinkedHashMap<String, List<Filter>> filters;
+
+    @SerializedName("url")
+    @JsonAdapter(UrlAdapter.class)
+    private Url url;
+
+    @SerializedName("msg")
+    @JsonAdapter(MsgAdapter.class)
+    private String msg;
+
+    @SerializedName("subs")
+    private List<Sub> subs;
     @SerializedName("header")
     private JsonElement header;
     @SerializedName("playUrl")
     private String playUrl;
     @SerializedName("jxFrom")
     private String jxFrom;
-    @SerializedName("parse")
-    private Integer parse;
-    @SerializedName("jx")
-    private Integer jx;
     @SerializedName("flag")
     private String flag;
+    @SerializedName("danmaku")
+    private String danmaku;
     @SerializedName("format")
     private String format;
-    @SerializedName("url")
-    @JsonAdapter(UrlAdapter.class)
-    private Url url;
+    @SerializedName("click")
+    private String click;
+    @SerializedName("js")
+    private String js;
     @SerializedName("key")
     private String key;
-    @SerializedName("subs")
-    private List<Sub> subs;
     @SerializedName("pagecount")
     private Integer pagecount;
+    @SerializedName("parse")
+    private Integer parse;
     @SerializedName("code")
     private Integer code;
-    @JsonAdapter(MsgAdapter.class)
-    @SerializedName("msg")
-    private String msg;
+    @SerializedName("jx")
+    private Integer jx;
+    @SerializedName("drm")
+    private Drm drm;
 
     public static Result objectFrom(String str) {
         try {
-            return new Gson().fromJson(str, Result.class);
+            return App.gson().fromJson(str, Result.class);
         } catch (Exception e) {
             return empty();
         }
@@ -92,7 +100,7 @@ public class Result implements Parcelable {
 
     public static Result fromXml(String str) {
         try {
-            return new Persister().read(Result.class, str).trans();
+            return new Persister().read(Result.class, str, false).trans();
         } catch (Exception e) {
             return empty();
         }
@@ -122,8 +130,14 @@ public class Result implements Parcelable {
         type.setTypeFlag("1");
         type.setTypeId(item.getVodId());
         type.setTypeName(item.getVodName());
-        result.setTypes(List.of(type));
+        result.setTypes(Arrays.asList(type));
         return result;
+    }
+
+    public static Result type(String json) {
+        Result result = new Result();
+        result.setTypes(Arrays.asList(Class.objectFrom(json)));
+        return result.trans();
     }
 
     public static Result list(List<Vod> items) {
@@ -159,8 +173,36 @@ public class Result implements Parcelable {
         return filters == null ? new LinkedHashMap<>() : filters;
     }
 
+    public Url getUrl() {
+        return url == null ? Url.create() : url;
+    }
+
+    public void setUrl(Url url) {
+        this.url = url;
+    }
+
+    public void setUrl(String url) {
+        this.url = getUrl().replace(url);
+    }
+
+    public String getMsg() {
+        return TextUtils.isEmpty(msg) || getCode() != 0 ? "" : msg;
+    }
+
+    public void setMsg(String msg) {
+        this.msg = msg;
+    }
+
+    public List<Sub> getSubs() {
+        return subs == null ? new ArrayList<>() : subs;
+    }
+
     public JsonElement getHeader() {
         return header;
+    }
+
+    public void setHeader(JsonElement header) {
+        if (getHeader() == null) this.header = header;
     }
 
     public String getPlayUrl() {
@@ -175,30 +217,6 @@ public class Result implements Parcelable {
         return TextUtils.isEmpty(jxFrom) ? "" : jxFrom;
     }
 
-    public Integer getParse() {
-        return getParse(0);
-    }
-
-    public Integer getParse(Integer def) {
-        return parse == null ? def : parse;
-    }
-
-    public void setParse(Integer parse) {
-        this.parse = parse;
-    }
-
-    public Integer getJx() {
-        return jx == null ? 0 : jx;
-    }
-
-    public void setJx(Integer jx) {
-        this.jx = jx;
-    }
-
-    public String getFormat() {
-        return format;
-    }
-
     public String getFlag() {
         return TextUtils.isEmpty(flag) ? "" : flag;
     }
@@ -207,16 +225,32 @@ public class Result implements Parcelable {
         this.flag = flag;
     }
 
-    public Url getUrl() {
-        return url == null ? Url.create() : url;
+    public String getDanmaku() {
+        return TextUtils.isEmpty(danmaku) ? "" : danmaku;
     }
 
-    public void setUrl(Url url) {
-        this.url = url;
+    public void setDanmaku(String danmaku) {
+        this.danmaku = danmaku;
     }
 
-    public void setUrl(String url) {
-        this.url = getUrl().replace(url);
+    public String getFormat() {
+        return format;
+    }
+
+    public String getClick() {
+        return TextUtils.isEmpty(click) ? "" : click;
+    }
+
+    public void setClick(String click) {
+        this.click = click;
+    }
+
+    public String getJs() {
+        return TextUtils.isEmpty(js) ? "" : js;
+    }
+
+    public void setJs(String js) {
+        this.js = js;
     }
 
     public String getKey() {
@@ -227,24 +261,32 @@ public class Result implements Parcelable {
         this.key = key;
     }
 
-    public List<Sub> getSubs() {
-        return subs == null ? Collections.emptyList() : subs;
-    }
-
     public Integer getPageCount() {
         return pagecount == null ? 0 : pagecount;
+    }
+
+    public Integer getParse(Integer def) {
+        return parse == null ? def : parse;
+    }
+
+    public Integer getParse() {
+        return getParse(0);
+    }
+
+    public void setParse(Integer parse) {
+        this.parse = parse;
     }
 
     public Integer getCode() {
         return code == null ? 0 : code;
     }
 
-    public String getMsg() {
-        return TextUtils.isEmpty(msg) || getCode() != 0 ? "" : msg;
+    public Integer getJx() {
+        return jx == null ? 0 : jx;
     }
 
-    public void setMsg(String msg) {
-        this.msg = msg;
+    public Drm getDrm() {
+        return drm;
     }
 
     public boolean hasMsg() {
@@ -257,6 +299,10 @@ public class Result implements Parcelable {
 
     public Map<String, String> getHeaders() {
         return Json.toMap(getHeader());
+    }
+
+    public Style getStyle(Style style) {
+        return getList().isEmpty() ? Style.rect() : getList().get(0).getStyle(style);
     }
 
     public Result clear() {
@@ -275,7 +321,7 @@ public class Result implements Parcelable {
     @NonNull
     @Override
     public String toString() {
-        return new Gson().toJson(this);
+        return App.gson().toJson(this);
     }
 
     @Override
@@ -287,15 +333,12 @@ public class Result implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeList(this.types);
         dest.writeTypedList(this.list);
-        dest.writeString(App.gson().toJson(this.filters));
     }
 
     protected Result(Parcel in) {
         this.types = new ArrayList<>();
         in.readList(this.types, Class.class.getClassLoader());
         this.list = in.createTypedArrayList(Vod.CREATOR);
-        Type listType = new TypeToken<LinkedHashMap<String, List<Filter>>>() {}.getType();
-        this.filters = App.gson().fromJson(in.readString(), listType);
     }
 
     public static final Creator<Result> CREATOR = new Creator<>() {
